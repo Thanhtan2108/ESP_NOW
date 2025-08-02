@@ -118,9 +118,36 @@ The system includes built-in alerts for:
 4. **Configure MAC Address**:
 
    - Get the MAC address of your receiver ESP32:
-     - Upload and run the basic WiFi scanner example
-     - Note the MAC address displayed in serial monitor
-   - Update the `receivedAddressMAC` array in the transmitter's code
+
+     - Create a new file in ESP32_ESP_NOW_RX/src/ named `get_mac_address.cpp` with this code:
+
+     ```cpp
+     #include <Arduino.h>
+     #include <WiFi.h>
+
+     void setup() {
+       Serial.begin(115200);
+       WiFi.mode(WIFI_MODE_STA);
+
+       Serial.println("\nESP32 MAC Address:");
+       Serial.println(WiFi.macAddress());
+     }
+
+     void loop() {
+       delay(1000);
+     }
+     ```
+
+     - Upload this code to the receiver ESP32
+     - Open Serial Monitor (baud rate 115200)
+     - Note the MAC address displayed (format will be like "XX:XX:XX:XX:XX:XX")
+
+   - Update the `receivedAddressMAC` array in the transmitter's code with the MAC address:
+
+     ```cpp
+     // Example if MAC is "A4:CF:12:34:56:78"
+     uint8_t receivedAddressMAC[] = {0xA4, 0xCF, 0x12, 0x34, 0x56, 0x78};
+     ```
 
 5. **Upload Code**:
 
