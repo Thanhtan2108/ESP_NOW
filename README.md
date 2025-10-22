@@ -1,12 +1,12 @@
-# Báo Cáo Khoa Học: Giao Thức ESP-NOW Trên ESP32/ESP8266 Và Ứng Dụng Trong Hệ Thống Cảm Biến
+# Giao Thức ESP-NOW Trên ESP32 Và Ứng Dụng Trong Hệ Thống Cảm Biến
 
 ## Tóm Tắt (Abstract)
 
-Báo cáo này tóm tắt các khái niệm lý thuyết chính về giao thức ESP-NOW trên các vi điều khiển ESP32 và ESP8266, dựa trên cuộc thảo luận kỹ thuật. Nội dung bao gồm cấu trúc code tiêu chuẩn, cơ chế hoạt động không đồng bộ, định nghĩa cấu trúc dữ liệu (struct), và ứng dụng thực tế với cảm biến. Báo cáo nhấn mạnh tính hiệu quả của ESP-NOW trong giao tiếp không dây low-power, low-latency, và cách thiết kế code để đảm bảo tính modular và dễ mở rộng. Các phân tích dựa trên nguyên tắc lập trình Arduino/ESP và tài liệu kỹ thuật từ Espressif. Phần cấu trúc code được trình bày chi tiết với demo code xây dựng trên PlatformIO (framework Arduino, board DOIT ESP32 Devkit V1, baudrate 115200) để minh họa cụ thể.
+Báo cáo này tóm tắt các khái niệm lý thuyết chính về giao thức ESP-NOW trên các vi điều khiển ESP32, dựa trên cuộc thảo luận kỹ thuật. Nội dung bao gồm cấu trúc code tiêu chuẩn, cơ chế hoạt động không đồng bộ, định nghĩa cấu trúc dữ liệu (struct), và ứng dụng thực tế với cảm biến. Báo cáo nhấn mạnh tính hiệu quả của ESP-NOW trong giao tiếp không dây low-power, low-latency, và cách thiết kế code để đảm bảo tính modular và dễ mở rộng. Các phân tích dựa trên nguyên tắc lập trình Arduino/ESP và tài liệu kỹ thuật từ Espressif. Phần cấu trúc code được trình bày chi tiết với demo code xây dựng trên PlatformIO (framework Arduino, board DOIT ESP32 Devkit V1, baudrate 115200) để minh họa cụ thể.
 
 ## 1. Mở Đầu (Introduction)
 
-Giao thức ESP-NOW là một công nghệ giao tiếp không dây được phát triển bởi Espressif Systems, dành cho các thiết bị dựa trên chip ESP32 và ESP8266. Nó cho phép truyền dữ liệu nhanh chóng mà không cần kết nối Wi-Fi đầy đủ, phù hợp cho các ứng dụng IoT (Internet of Things) như giám sát cảm biến. Trong báo cáo này, chúng ta tập trung vào lý thuyết cốt lõi từ cuộc thảo luận, bao gồm cấu trúc code chung, cơ chế xử lý dữ liệu, và vai trò của cấu trúc dữ liệu. Mục tiêu là cung cấp cái nhìn tổng quan khoa học, giúp hiểu rõ cách triển khai ESP-NOW trong môi trường thực tế.
+Giao thức ESP-NOW là một công nghệ giao tiếp không dây được phát triển bởi Espressif Systems, dành cho các thiết bị dựa trên chip ESP32. Nó cho phép truyền dữ liệu nhanh chóng mà không cần kết nối Wi-Fi đầy đủ, phù hợp cho các ứng dụng IoT (Internet of Things) như giám sát cảm biến. Trong báo cáo này, chúng ta tập trung vào lý thuyết cốt lõi từ cuộc thảo luận, bao gồm cấu trúc code chung, cơ chế xử lý dữ liệu, và vai trò của cấu trúc dữ liệu. Mục tiêu là cung cấp cái nhìn tổng quan khoa học, giúp hiểu rõ cách triển khai ESP-NOW trong môi trường thực tế.
 
 ## 2. Giao Thức ESP-NOW: Nguyên Lý Hoạt Động (ESP-NOW Protocol: Operating Principles)
 
@@ -49,7 +49,7 @@ Nhiệm vụ: Khai báo thư viện cần thiết như `esp_now.h` (cho giao th�
 
 - Demo code (chỉ phần include):
 
-  ```cpp
+  ```c
   #include <esp_now.h>  // Hỗ trợ giao thức ESP-NOW
   #include <WiFi.h>     // Hỗ trợ WiFi mode
 
@@ -146,11 +146,21 @@ Nhiệm vụ: Khởi tạo ban đầu như Serial, WiFi, ESP-NOW, callback, và 
   void setup() {
     Serial.begin(115200);  // Baudrate debug
     WiFi.mode(WIFI_STA);
-    esp_now_init();
+    if (esp_now_init() != ESP_OK) {
+        Serial.println("Lỗi khởi tạo ESP-NOW!");
+        while (1); // Dừng chương trình nếu lỗi
+    }
+    Serial.println("ESP-NOW khởi tạo thành công!");
     esp_now_register_send_cb(OnDataSent);
-    esp_now_peer_info_t peerInfo;
+    esp_now_peer_info_t peerInfo = {};
     memcpy(peerInfo.peer_addr, receiverAddress, 6);
-    esp_now_add_peer(&peerInfo);
+    peerInfo.channel = 0; // Kênh WiFi (0 = tự động)
+    peerInfo.encrypt = false; // Không mã hóa
+    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+      Serial.println("Lỗi thêm peer!");
+      while (1); // Dừng chương trình nếu lỗi
+    }
+    Serial.println("Thêm peer thành công!");
   }
 
   void loop() {}
@@ -204,6 +214,10 @@ Nhiệm vụ: Thực hiện hoạt động lặp lại như đọc cảm biến 
     int rainValue = analogRead(34);  // Đọc cảm biến
     myData.isRaining = (rainValue < 3500);  // Tính ngưỡng
     esp_err_t result = esp_now_send(receiverAddress, (uint8_t *) &myData, sizeof(myData));  // Gửi
+    // Kiểm tra lỗi khi gửi nếu có
+    if (result != ESP_OK) {
+      Serial.println("Lỗi gửi dữ liệu qua ESP-NOW!");
+    }
     delay(1000);  // Lặp mỗi giây
   }
   ```
@@ -250,7 +264,7 @@ Trong ví dụ, sender sử dụng cảm biến mưa (analog, ngưỡng 3500) đ
 
 ## 6. Kết Luận (Conclusion)
 
-ESP-NOW là giao thức mạnh mẽ cho giao tiếp không dây trong IoT, với thiết kế không đồng bộ đảm bảo hiệu suất cao. Cấu trúc code tiêu chuẩn và struct dữ liệu cung cấp nền tảng modular, dễ mở rộng cho các cảm biến. Báo cáo này tổng hợp lý thuyết từ thảo luận, nhấn mạnh tính thực tiễn trong lập trình ESP32/ESP8266. Các nghiên cứu tương lai có thể khám phá bảo mật (mã hóa PMK/LMK) và tích hợp nhiều thiết bị.
+ESP-NOW là giao thức mạnh mẽ cho giao tiếp không dây trong IoT, với thiết kế không đồng bộ đảm bảo hiệu suất cao. Cấu trúc code tiêu chuẩn và struct dữ liệu cung cấp nền tảng modular, dễ mở rộng cho các cảm biến. Báo cáo này tổng hợp lý thuyết từ thảo luận, nhấn mạnh tính thực tiễn trong lập trình ESP32. Các nghiên cứu tương lai có thể khám phá bảo mật (mã hóa PMK/LMK) và tích hợp nhiều thiết bị.
 
 ## Tài Liệu Tham Khảo (References)
 
