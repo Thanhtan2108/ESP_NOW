@@ -167,23 +167,23 @@ struct DistanceData {
 
 **Transmitter:**
 
-Đọc giá trị từ HC-SR04 (lọc nhiễu, lấy trung bình)
+- Đọc giá trị từ HC-SR04 (lọc nhiễu, lấy trung bình)
 
-Đóng gói dữ liệu vào struct
+- Đóng gói dữ liệu vào struct
 
-Gửi qua ESP-NOW
+- Gửi qua ESP-NOW
 
-Nhận callback xác nhận
+- Nhận callback xác nhận
 
 **Receiver:**
 
-Chờ dữ liệu ESP-NOW
+- Chờ dữ liệu ESP-NOW
 
-Kiểm tra tính hợp lệ của dữ liệu
+- Kiểm tra tính hợp lệ của dữ liệu
 
-Hiển thị lên LCD và Serial Monitor
+- Hiển thị lên LCD và Serial Monitor
 
-Phát hiện mất kết nối
+- Phát hiện mất kết nối
 
 ### 5.3 Xử lý nhiễu HC-SR04
 
