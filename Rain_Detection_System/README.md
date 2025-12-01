@@ -179,6 +179,3 @@ rain_detection_system/
     │   └── main.cpp
     └── platformio.ini
 ```
-
-Tác Giả
-Dự án được phát triển bởi [Ngô Thanh Tân]

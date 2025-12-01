@@ -417,3 +417,169 @@ ESP-NOW là giao thức mạnh mẽ cho giao tiếp không dây trong IoT, với
 - Tài liệu Espressif Systems về ESP-NOW (API Reference).
 
 - Các tutorial Arduino/ESP về giao tiếp cảm biến và callback functions.
+
+## Quy trình phát triển cho Module Transmitter
+
+### 1. Include các thư viện cần thiết và chỉ định địa chỉ MAC của board receiver
+
+```cpp
+#include <esp_now.h>
+#include <WiFi.h>
+// include thêm thư viện nếu có
+
+uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // thay địa chỉ MAC thật sự
+```
+
+### 2 . Xây dựng 1 struct cho việc gửi dữ liệu
+
+```cpp
+typedef struct {
+    // các trường dữ liệu gửi đi
+} name_struct;
+```
+
+- Struct chứa các trường dữ liệu muốn gửi đi
+
+### 3. Khởi tạo 1 đối tượng đại diện cho struct đó
+
+```cpp
+name_struct name_object;
+```
+
+- Đối tượng đại diện cho toàn bộ dữ liệu được gửi đi
+
+### 4. Xây dựng hàm callback onDataSent
+
+```cpp
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+    Serial.print("\r\nLast Packet Send Status:\t");
+    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+}
+```
+
+- Hàm được gọi khi đã gửi dữ liệu xong
+
+- Không xây dựng để xử lý dữ liệu trước khi gửi, thường dùng để thông báo
+
+### 5. Trong setup, thực hiện bật chế độ Wifi và khởi tạo ESP-NOW
+
+```cpp
+WiFi.mode(WIFI_STA);
+
+if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+}
+```
+
+### 6. Đăng ký callback với ESP-NOW
+
+```cpp
+esp_now_register_send_cb(OnDataSent);
+```
+
+### 7. Thiết lập peer cho ESP-NOW
+
+```cpp
+esp_now_peer_info_t peerInfo;
+memcpy(peerInfo.peer_addr,broadcastAddress, 6);
+peerInfo.channel = 0;  
+peerInfo.encrypt = false;
+    
+if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return;
+}
+```
+
+### 8. Trong loop, thực hiện xử lý dữ liệu như bình thường và gán kết quả dữ liệu đã xử lý cho các trường trong struct đã tạo ban đầu để gửi dữ liệu đi thông qua đối tượng đại diện được tạo từ struct đó
+
+- Ví dụ :
+
+```cpp
+int sensorValue = digitalRead(analogPin);
+
+name_object.value = sensorValue;
+```
+
+### 9. Trong loop, sau khi đã xử lý dữ liệu và gán cho struct xong, gửi dữ liệu đi thông qua ESP-NOW
+
+```cpp
+esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &name_object, sizeof(name_object));
+    
+if (result == ESP_OK) {
+    Serial.println("Sent with success");
+} else {
+    Serial.println("Error sending the data");
+}
+```
+
+## Quy trình phát triển cho Module Receiver
+
+### 1. Include các thư viện cần thiết
+
+```cpp
+#include <esp_now.h>
+#include <WiFi.h>
+// include thêm thư viện nếu có
+```
+
+### 2 . Xây dựng 1 struct cho việc nhận dữ liệu, cấu trúc của struct giống hệt như struct bên gửi dữ liệu
+
+```cpp
+typedef struct {
+    // các trường dữ liệu gửi đi
+} name_struct;
+```
+
+- Struct chứa các trường dữ liệu nhận về được từ bên gửi
+
+### 3. Khởi tạo 1 đối tượng đại diện cho struct đó để nhận dữ liệu
+
+```cpp
+name_struct name_object;
+```
+
+- Đối tượng đại diện cho toàn bộ dữ liệu nhận được từ bên gửi
+
+### 4. Xây dựng hàm callback onDataonDataRecv
+
+```cpp
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+    memcpy(&name_object, incomingData, sizeof(name_object));
+
+  // Xử lý dữ liệu, thực hiện in, so sánh ngưỡng, hiển thị màn hình, điều khiển động cơ, thực hiện task,...
+}
+```
+
+- Hàm được gọi khi nhận được dữ liệu từ bên gửi
+
+- Xây dựng để xử lý dữ liệu nhận được bên trong nó
+
+### 5. Trong setup thực hiện bật chế độ Wifi, khởi tạo ESP-NOW, nếu ESP-NOW không thành công thì cũng set trạng thái reset cho các đối tượng được dùng trong hàm callback `onDataRecv`
+
+```cpp
+WiFi.mode(WIFI_STA);
+
+if (esp_now_init() != ESP_OK) {
+  Serial.println("Error initializing ESP-NOW");
+  // ví dụ, reset trạng thái LCD 1602
+  // lcd.clear();
+  // lcd.print("LOI ESP-NOW!");
+  return;
+}
+```
+
+### 6. Đăng ký hàm callback với ESP-NOW
+
+```cpp
+esp_now_register_recv_cb(OnDataRecv);
+```
+
+### 8. Trong loop, không thực hiện gì vì dữ liệu đã được xử lý trong hàm callback `onDataRecv` hoặc có xử lý 1 vài dữ liệu để so sánh ngưỡng.
+
+```cpp
+// Xử lý so sánh ngưỡng nếu cần
+
+delay(1000);
+```
