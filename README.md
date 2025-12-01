@@ -576,7 +576,7 @@ if (esp_now_init() != ESP_OK) {
 esp_now_register_recv_cb(OnDataRecv);
 ```
 
-### 8. Trong loop, không thực hiện gì vì dữ liệu đã được xử lý trong hàm callback `onDataRecv` hoặc có xử lý 1 vài dữ liệu để so sánh ngưỡng
+### 7. Trong loop, không thực hiện gì vì dữ liệu đã được xử lý trong hàm callback `onDataRecv` hoặc có xử lý 1 vài dữ liệu để so sánh ngưỡng
 
 ```cpp
 // Xử lý so sánh ngưỡng nếu cần
